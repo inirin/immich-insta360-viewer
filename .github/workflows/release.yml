@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.5.2 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build extension
+        run: pnpm --filter @immich-insta360-viewer/extension build
+
+      - name: Package extension
+        run: |
+          cd apps/extension/dist
+          zip -r ../../../immich-insta360-viewer-extension.zip .
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push helper image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.helper
+          push: true
+          tags: |
+            ghcr.io/inirin/immich-insta360-viewer-helper:${{ github.ref_name }}
+            ghcr.io/inirin/immich-insta360-viewer-helper:latest
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: immich-insta360-viewer-extension.zip
