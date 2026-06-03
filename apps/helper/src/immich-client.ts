@@ -4,6 +4,7 @@ export type ImmichAsset = {
   id: string;
   type: string;
   originalFileName: string;
+  duration?: string;
 };
 
 export type ImmichOriginalDownload = {

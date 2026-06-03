@@ -114,6 +114,48 @@
         height: 100vh;
       }
 
+      #controls {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        z-index: 2;
+        display: none;
+        grid-template-columns: 36px 54px minmax(160px, 520px) 54px;
+        gap: 10px;
+        align-items: center;
+        width: min(720px, calc(100vw - 32px));
+        padding: 10px 12px;
+        box-sizing: border-box;
+        transform: translateX(-50%);
+        border: 1px solid rgb(255 255 255 / 14%);
+        border-radius: 8px;
+        color: #ffffff;
+        background: rgb(12 12 12 / 78%);
+        font: 13px/1.2 system-ui, sans-serif;
+      }
+
+      #play-toggle {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 999px;
+        color: #101010;
+        background: #ffffff;
+        font: 15px/1 system-ui, sans-serif;
+        cursor: pointer;
+      }
+
+      #seek {
+        width: 100%;
+        accent-color: #6ee7b7;
+      }
+
+      .time {
+        color: rgb(255 255 255 / 82%);
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+      }
+
       @keyframes spin {
         to {
           transform: rotate(360deg);
@@ -144,6 +186,12 @@
     </div>
     <video id="video" playsinline style="display:none"></video>
     <canvas id="scene"></canvas>
+    <div id="controls">
+      <button id="play-toggle" type="button" aria-label="Pause">II</button>
+      <span id="current-time" class="time">0:00</span>
+      <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek" />
+      <span id="duration" class="time">0:00</span>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

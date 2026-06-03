@@ -10,6 +10,7 @@ import { ImmichClient } from './immich-client.js';
 import { generateHls, probeFile, waitForPlayableHls } from './media-tools.js';
 
 export type PrepareAssetOptions = {
+  ffmpegEncoder?: string;
   ffmpegPreset?: string;
 };
 
@@ -21,12 +22,30 @@ export function validateInsvAsset(asset: ImmichAsset): void {
 
 export function mapDownloadProgress(downloadedBytes: number, totalBytes: number): number {
   const ratio = Math.max(0, Math.min(1, downloadedBytes / totalBytes));
-  return 0.05 + ratio * 0.35;
+  return ratio * 0.3;
 }
 
 export function mapProcessingProgress(processedRatio: number): number {
   const ratio = Math.max(0, Math.min(1, processedRatio));
-  return 0.45 + ratio * 0.5;
+  return 0.3 + ratio * 0.65;
+}
+
+export function parseImmichDurationSeconds(duration: string | undefined): number | undefined {
+  if (!duration) {
+    return undefined;
+  }
+
+  const match = /^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$/.exec(duration);
+  if (!match) {
+    return undefined;
+  }
+
+  const hours = Number.parseInt(match[1], 10);
+  const minutes = Number.parseInt(match[2], 10);
+  const seconds = Number.parseFloat(match[3]);
+  const total = hours * 3600 + minutes * 60 + seconds;
+
+  return Number.isFinite(total) && total > 0 ? total : undefined;
 }
 
 function createProgressStream(
@@ -68,39 +87,21 @@ export async function prepareAsset(
     validateInsvAsset(asset);
 
     const entry = await cache.entryFor(assetId);
-    if (!(await cache.hasOriginal(assetId))) {
-      states.set(assetId, { state: 'downloading', progress: null, message: 'Downloading original .insv' });
-      const download = await client.downloadOriginal(assetId);
-      const tempOriginalPath = join(
-        entry.assetDir,
-        `.${basename(entry.originalPath)}.${process.pid}.${Date.now()}.tmp`,
-      );
-      try {
-        const progress = createProgressStream(download.sizeBytes, (downloadedBytes, totalBytes) => {
-          states.set(assetId, {
-            state: 'downloading',
-            progress: totalBytes === undefined ? null : mapDownloadProgress(downloadedBytes, totalBytes),
-            message: totalBytes === undefined
-              ? `Downloading original .insv (${Math.round(downloadedBytes / 1024 / 1024)} MB)`
-              : 'Downloading original .insv',
-          });
-        });
-        await pipeline(download.stream, progress, createWriteStream(tempOriginalPath));
-        await rename(tempOriginalPath, entry.originalPath);
-      } catch (error) {
-        await rm(tempOriginalPath, { force: true });
-        throw error;
-      }
+    if (await cache.hasCompletePlaylist(assetId)) {
+      states.set(assetId, { state: 'ready', progress: 1, message: 'Ready' });
+      return;
     }
 
-    states.set(assetId, { state: 'analyzing', progress: null, message: 'Analyzing .insv streams' });
-    const probe = await probeFile(entry.originalPath);
+    const assetDurationSeconds = parseImmichDurationSeconds(asset.duration);
 
-    if (!(await cache.hasCompletePlaylist(assetId))) {
+    if (await cache.hasOriginal(assetId)) {
+      states.set(assetId, { state: 'analyzing', progress: null, message: 'Analyzing .insv streams' });
+      const probe = await probeFile(entry.originalPath);
       await cache.clearHls(assetId);
       states.set(assetId, { state: 'processing', progress: null, message: 'Generating 360 stream' });
       const generation = generateHls(entry.originalPath, entry.hlsDir, {
-        durationSeconds: probe.durationSeconds,
+        durationSeconds: probe.durationSeconds ?? assetDurationSeconds,
+        encoder: options.ffmpegEncoder,
         preset: options.ffmpegPreset,
         onProgress(progress) {
           states.set(assetId, {
@@ -120,6 +121,68 @@ export async function prepareAsset(
         message: 'Starting playback while finishing conversion',
       });
       await generation;
+      states.set(assetId, { state: 'ready', progress: 1, message: 'Ready' });
+      return;
+    }
+
+    states.set(assetId, { state: 'downloading', progress: null, message: 'Downloading original .insv' });
+
+    const download = await client.downloadOriginal(assetId);
+    const tempOriginalPath = join(
+      entry.assetDir,
+      `.${basename(entry.originalPath)}.${process.pid}.${Date.now()}.tmp`,
+    );
+    try {
+      const progress = createProgressStream(download.sizeBytes, (downloadedBytes, totalBytes) => {
+        if (totalBytes !== undefined) {
+          states.set(assetId, {
+            state: 'downloading',
+            progress: mapDownloadProgress(downloadedBytes, totalBytes),
+            message: 'Downloading original .insv',
+          });
+          return;
+        }
+
+        states.set(assetId, {
+          state: 'downloading',
+          progress: null,
+          message: `Downloading original .insv (${Math.round(downloadedBytes / 1024 / 1024)} MB)`,
+        });
+      });
+
+      await pipeline(download.stream, progress, createWriteStream(tempOriginalPath));
+      await rename(tempOriginalPath, entry.originalPath);
+
+      states.set(assetId, { state: 'analyzing', progress: 0.3, message: 'Analyzing .insv streams' });
+      const probe = await probeFile(entry.originalPath);
+      await cache.clearHls(assetId);
+      states.set(assetId, { state: 'processing', progress: 0.3, message: 'Generating 360 stream' });
+      const generation = generateHls(entry.originalPath, entry.hlsDir, {
+        durationSeconds: probe.durationSeconds ?? assetDurationSeconds,
+        encoder: options.ffmpegEncoder,
+        preset: options.ffmpegPreset,
+        onProgress(progressValue) {
+          states.set(assetId, {
+            state: 'processing',
+            progress: mapProcessingProgress(progressValue),
+            message: 'Generating 360 stream',
+          });
+        },
+      });
+
+      await Promise.race([
+        waitForPlayableHls(entry.hlsDir),
+        generation,
+      ]);
+      states.set(assetId, {
+        state: 'playable',
+        progress: 1,
+        message: 'Starting playback while finishing conversion',
+      });
+      await generation;
+    } catch (error) {
+      await rm(tempOriginalPath, { force: true });
+      throw error;
     }
 
     states.set(assetId, { state: 'ready', progress: 1, message: 'Ready' });

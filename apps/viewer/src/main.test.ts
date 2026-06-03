@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'vitest';
 
-import { formatPrepareStatus, getAssetIdFromPath, getProgressPercent, isPlayableState } from './main';
+import {
+  formatPlaybackTime,
+  formatPrepareStatus,
+  getAssetIdFromPath,
+  getProgressPercent,
+  getSeekValue,
+  isPlayableState,
+} from './main';
 
 describe('getAssetIdFromPath', () => {
   test('returns the last path segment as the asset ID', () => {
@@ -43,5 +50,22 @@ describe('isPlayableState', () => {
   test('keeps waiting for preparation states', () => {
     expect(isPlayableState('processing')).toBe(false);
     expect(isPlayableState(undefined)).toBe(false);
+  });
+});
+
+describe('formatPlaybackTime', () => {
+  test('formats seconds as minutes and seconds', () => {
+    expect(formatPlaybackTime(0)).toBe('0:00');
+    expect(formatPlaybackTime(65.9)).toBe('1:05');
+  });
+});
+
+describe('getSeekValue', () => {
+  test('maps current time to a stable range input value', () => {
+    expect(getSeekValue(5, 10)).toBe(500);
+  });
+
+  test('returns zero when duration is unknown', () => {
+    expect(getSeekValue(5, 0)).toBe(0);
   });
 });

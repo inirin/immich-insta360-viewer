@@ -1,6 +1,6 @@
 {
   "name": "@immich-insta360-viewer/viewer",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "scripts": {
     "build": "vite build",

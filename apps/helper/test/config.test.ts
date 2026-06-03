@@ -14,6 +14,7 @@ describe('loadConfig', () => {
     expect(config.cacheDir).toBe('/cache');
     expect(config.cacheMaxGb).toBe(20);
     expect(config.cacheTtlHours).toBe(72);
+    expect(config.ffmpegEncoder).toBe('libx264');
     expect(config.ffmpegPreset).toBe('superfast');
   });
 

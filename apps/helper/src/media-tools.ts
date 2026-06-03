@@ -38,6 +38,7 @@ type RunOptions = {
 
 type GenerateHlsOptions = RunOptions & {
   durationSeconds?: number;
+  encoder?: string;
   onProgress?: (progress: number) => void;
   preset?: string;
 };
@@ -87,6 +88,8 @@ export async function generateHls(
 ): Promise<string> {
   await mkdir(outputDir, { recursive: true });
   const playlist = join(outputDir, 'master.m3u8');
+  const encoder = options.encoder ?? 'libx264';
+  const preset = options.preset ?? (encoder === 'libx264' ? 'superfast' : 'p1');
   const progressParser = createFfmpegProgressParser((processedSeconds) => {
     if (options.durationSeconds === undefined || options.onProgress === undefined) {
       return;
@@ -95,16 +98,16 @@ export async function generateHls(
     options.onProgress(Math.max(0, Math.min(1, processedSeconds / options.durationSeconds)));
   });
 
-  await runProcessForTest('ffmpeg', [
+  const args = [
     '-y',
     '-i', inputPath,
     '-filter_complex',
     '[0:v:0][0:v:1]hstack=inputs=2,format=yuv420p[v]',
     '-map', '[v]',
     '-map', '0:a:0?',
-    '-c:v', 'libx264',
-    '-preset', options.preset ?? 'superfast',
-    '-crf', '23',
+    '-c:v', encoder,
+    '-preset', preset,
+    ...videoQualityArgs(encoder),
     '-c:a', 'aac',
     '-f', 'hls',
     '-hls_time', '2',
@@ -114,12 +117,26 @@ export async function generateHls(
     '-progress', 'pipe:1',
     '-nostats',
     playlist,
-  ], {
+  ];
+
+  await runProcessForTest('ffmpeg', args, {
     ...options,
     onStdout: progressParser,
   });
 
   return playlist;
+}
+
+function videoQualityArgs(encoder: string): string[] {
+  if (encoder === 'libx264') {
+    return ['-crf', '23'];
+  }
+
+  if (encoder.includes('nvenc')) {
+    return ['-cq', '23', '-b:v', '0'];
+  }
+
+  return [];
 }
 
 export function parseFfmpegProgressSeconds(line: string): number | null {

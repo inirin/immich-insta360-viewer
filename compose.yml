@@ -10,6 +10,7 @@ services:
       CACHE_DIR: /cache
       CACHE_MAX_GB: ${CACHE_MAX_GB:-20}
       CACHE_TTL_HOURS: ${CACHE_TTL_HOURS:-72}
+      FFMPEG_ENCODER: ${FFMPEG_ENCODER:-libx264}
       FFMPEG_PRESET: ${FFMPEG_PRESET:-superfast}
       PORT: 3560
     volumes:

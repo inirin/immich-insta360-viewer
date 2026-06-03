@@ -9,6 +9,7 @@ services:
       CACHE_DIR: /cache
       CACHE_MAX_GB: 20
       CACHE_TTL_HOURS: 72
+      FFMPEG_ENCODER: libx264
       FFMPEG_PRESET: superfast
       VIEWER_TOKEN: ${VIEWER_TOKEN}
       PORT: 3560

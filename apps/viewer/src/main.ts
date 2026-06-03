@@ -18,6 +18,14 @@ type StatusElements = {
   percent: HTMLElement;
 };
 
+type PlaybackControls = {
+  container: HTMLElement;
+  playToggle: HTMLButtonElement;
+  currentTime: HTMLElement;
+  seek: HTMLInputElement;
+  duration: HTMLElement;
+};
+
 export function getAssetIdFromPath(pathname: string): string | null {
   const assetId = pathname.split('/').filter(Boolean).at(-1);
 
@@ -50,6 +58,26 @@ export function isPlayableState(state: string | undefined): boolean {
   return state === 'playable' || state === 'ready';
 }
 
+export function formatPlaybackTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return '0:00';
+  }
+
+  const wholeSeconds = Math.floor(seconds);
+  const minutes = Math.floor(wholeSeconds / 60);
+  const remainingSeconds = wholeSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+export function getSeekValue(currentTime: number, duration: number): number {
+  if (!Number.isFinite(currentTime) || !Number.isFinite(duration) || duration <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(1000, Math.round((currentTime / duration) * 1000)));
+}
+
 function getViewerToken(): string | undefined {
   return new URLSearchParams(window.location.search).get('token')?.trim() || undefined;
 }
@@ -74,6 +102,16 @@ function getStatusElements(): StatusElements {
     message: getRequiredElement('status-message', HTMLDivElement),
     progress: getRequiredElement('status-progress', HTMLDivElement),
     percent: getRequiredElement('status-percent', HTMLDivElement),
+  };
+}
+
+function getPlaybackControls(): PlaybackControls {
+  return {
+    container: getRequiredElement('controls', HTMLDivElement),
+    playToggle: getRequiredElement('play-toggle', HTMLButtonElement),
+    currentTime: getRequiredElement('current-time', HTMLSpanElement),
+    seek: getRequiredElement('seek', HTMLInputElement),
+    duration: getRequiredElement('duration', HTMLSpanElement),
   };
 }
 
@@ -186,6 +224,51 @@ function attachHls(assetId: string, video: HTMLVideoElement, viewerToken: string
   );
 }
 
+function attachPlaybackControls(video: HTMLVideoElement, controls: PlaybackControls): void {
+  let isSeeking = false;
+
+  function sync(): void {
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    controls.currentTime.textContent = formatPlaybackTime(video.currentTime);
+    controls.duration.textContent = formatPlaybackTime(duration);
+    controls.playToggle.textContent = video.paused ? '>' : 'II';
+    controls.playToggle.setAttribute('aria-label', video.paused ? 'Play' : 'Pause');
+
+    if (!isSeeking) {
+      controls.seek.value = String(getSeekValue(video.currentTime, duration));
+    }
+  }
+
+  controls.playToggle.addEventListener('click', () => {
+    if (video.paused) {
+      void video.play();
+      return;
+    }
+
+    video.pause();
+  });
+
+  controls.seek.addEventListener('input', () => {
+    isSeeking = true;
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    const nextTime = (Number.parseInt(controls.seek.value, 10) / 1000) * duration;
+    controls.currentTime.textContent = formatPlaybackTime(nextTime);
+  });
+
+  controls.seek.addEventListener('change', () => {
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    video.currentTime = (Number.parseInt(controls.seek.value, 10) / 1000) * duration;
+    isSeeking = false;
+    sync();
+  });
+
+  video.addEventListener('durationchange', sync);
+  video.addEventListener('timeupdate', sync);
+  video.addEventListener('play', sync);
+  video.addEventListener('pause', sync);
+  sync();
+}
+
 function renderSphere(video: HTMLVideoElement, canvas: HTMLCanvasElement): void {
   const renderer = new THREE.WebGLRenderer({ antialias: true, canvas });
   const scene = new THREE.Scene();
@@ -264,6 +347,7 @@ function renderSphere(video: HTMLVideoElement, canvas: HTMLCanvasElement): void 
 
 async function startViewer(): Promise<void> {
   const statusElements = getStatusElements();
+  const controls = getPlaybackControls();
   const video = getRequiredElement('video', HTMLVideoElement);
   const canvas = getRequiredElement('scene', HTMLCanvasElement);
   const assetId = getAssetIdFromPath(window.location.pathname);
@@ -278,6 +362,8 @@ async function startViewer(): Promise<void> {
     await prepare(assetId, statusElements, viewerToken);
     statusElements.container.style.display = 'none';
     video.style.display = 'block';
+    controls.container.style.display = 'grid';
+    attachPlaybackControls(video, controls);
     attachHls(assetId, video, viewerToken);
     renderSphere(video, canvas);
   } catch (error) {
