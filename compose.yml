@@ -1,0 +1,20 @@
+services:
+  insta360-viewer-helper:
+    image: ghcr.io/inirin/immich-insta360-viewer-helper:latest
+    container_name: immich-insta360-viewer-helper
+    restart: unless-stopped
+    environment:
+      IMMICH_URL: ${IMMICH_URL}
+      IMMICH_API_KEY: ${IMMICH_API_KEY}
+      VIEWER_TOKEN: ${VIEWER_TOKEN}
+      CACHE_DIR: /cache
+      CACHE_MAX_GB: ${CACHE_MAX_GB:-20}
+      CACHE_TTL_HOURS: ${CACHE_TTL_HOURS:-72}
+      PORT: 3560
+    volumes:
+      - insta360-viewer-cache:/cache
+    ports:
+      - "127.0.0.1:3560:3560"
+
+volumes:
+  insta360-viewer-cache:

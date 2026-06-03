@@ -23,28 +23,23 @@ This project provides a Docker helper service and a Chrome/Edge extension. The e
 
 ## Quick Start
 
-### 1. Clone The Repository
-
-```sh
-git clone https://github.com/inirin/immich-insta360-viewer.git
-cd immich-insta360-viewer
-```
-
-### 2. Build The Helper Image
-
-```sh
-docker build -f docker/Dockerfile.helper -t immich-insta360-viewer-helper:dev .
-```
-
-### 3. Create Secrets In Your Shell
-
-Use your own values. Do not commit these values to git.
+### 1. Run The Helper
 
 PowerShell:
 
 ```powershell
 $env:IMMICH_API_KEY = "your-immich-api-key"
 $env:VIEWER_TOKEN = "choose-a-random-viewer-token"
+
+docker run -d `
+  --name immich-insta360-viewer-helper `
+  --restart unless-stopped `
+  -p 127.0.0.1:3560:3560 `
+  -e IMMICH_URL=http://host.docker.internal:2283 `
+  -e IMMICH_API_KEY=$env:IMMICH_API_KEY `
+  -e VIEWER_TOKEN=$env:VIEWER_TOKEN `
+  -v insta360-viewer-cache:/cache `
+  ghcr.io/inirin/immich-insta360-viewer-helper:latest
 ```
 
 Bash:
@@ -52,13 +47,7 @@ Bash:
 ```sh
 export IMMICH_API_KEY="your-immich-api-key"
 export VIEWER_TOKEN="choose-a-random-viewer-token"
-```
 
-### 4. Run The Helper
-
-If Immich is reachable from Docker through `host.docker.internal`:
-
-```sh
 docker run -d \
   --name immich-insta360-viewer-helper \
   --restart unless-stopped \
@@ -67,18 +56,12 @@ docker run -d \
   -e IMMICH_API_KEY="$IMMICH_API_KEY" \
   -e VIEWER_TOKEN="$VIEWER_TOKEN" \
   -v insta360-viewer-cache:/cache \
-  immich-insta360-viewer-helper:dev
-```
-
-If you merge the helper into the same Compose project/network as Immich, `IMMICH_URL` can usually be:
-
-```text
-http://immich-server:2283
+  ghcr.io/inirin/immich-insta360-viewer-helper:latest
 ```
 
 Keep the helper bound to `127.0.0.1` unless you put it behind your own authenticated reverse proxy.
 
-### 5. Verify Helper Health
+### 2. Verify Helper Health
 
 ```sh
 curl http://localhost:3560/health
@@ -90,21 +73,48 @@ Expected:
 {"status":"ok","version":"0.1.0"}
 ```
 
-### 6. Build And Load The Extension
+### 3. Install The Extension
 
-```sh
-npx pnpm@10.5.2 --filter @immich-insta360-viewer/extension build
-```
+Download `immich-insta360-viewer-extension.zip` from the latest release:
 
-Then:
+https://github.com/inirin/immich-insta360-viewer/releases/latest
+
+Unzip it, then:
 
 1. Open `chrome://extensions` or `edge://extensions`.
 2. Enable developer mode.
 3. Click "Load unpacked".
-4. Select `apps/extension/dist`.
+4. Select the unzipped extension folder.
 5. Open the extension options.
 6. Set Helper URL to `http://localhost:3560`.
 7. Set Viewer Token to the same value as `VIEWER_TOKEN`.
+
+## Docker Compose
+
+Clone the repository:
+
+```sh
+git clone https://github.com/inirin/immich-insta360-viewer.git
+cd immich-insta360-viewer
+```
+
+Create `.env`:
+
+```sh
+cp .env.example .env
+```
+
+Edit `.env`, then run:
+
+```sh
+docker compose up -d
+```
+
+If you merge the helper into the same Compose project/network as Immich, `IMMICH_URL` can usually be:
+
+```text
+http://immich-server:2283
+```
 
 ## Usage
 
@@ -120,37 +130,19 @@ http://localhost:3560/view/<immich-asset-id>?token=<viewer-token>
 
 The first run downloads and processes the original `.insv`, so it can take a while. Later opens reuse the helper cache.
 
-## Docker Compose Example
+## Build From Source
 
-You can adapt `compose.example.yml`:
-
-```yaml
-services:
-  insta360-viewer-helper:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.helper
-    environment:
-      IMMICH_URL: http://immich-server:2283
-      IMMICH_API_KEY: ${IMMICH_API_KEY}
-      VIEWER_TOKEN: ${VIEWER_TOKEN}
-      CACHE_DIR: /cache
-      CACHE_MAX_GB: 20
-      CACHE_TTL_HOURS: 72
-      PORT: 3560
-    volumes:
-      - insta360-viewer-cache:/cache
-    ports:
-      - "127.0.0.1:3560:3560"
-
-volumes:
-  insta360-viewer-cache:
-```
-
-Run:
+Build the helper image locally:
 
 ```sh
-docker compose -f compose.example.yml up -d --build
+docker build -f docker/Dockerfile.helper -t immich-insta360-viewer-helper:dev .
+```
+
+Build the extension locally:
+
+```sh
+npx pnpm@10.5.2 install
+npx pnpm@10.5.2 --filter @immich-insta360-viewer/extension build
 ```
 
 ## Manual Verification
