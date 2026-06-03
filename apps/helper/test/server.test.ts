@@ -31,7 +31,7 @@ describe('buildServer', () => {
       const response = await app.inject({ method: 'GET', url: '/health' });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ status: 'ok', version: '0.1.3' });
+      expect(response.json()).toEqual({ status: 'ok', version: '0.1.4' });
     } finally {
       await app.close();
     }

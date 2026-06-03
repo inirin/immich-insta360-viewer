@@ -48,7 +48,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     inFlight.set(assetId, task);
   }
 
-  app.get('/health', async () => ({ status: 'ok', version: '0.1.3' }));
+  app.get('/health', async () => ({ status: 'ok', version: '0.1.4' }));
 
   app.get('/api/assets/:assetId/status', { preHandler: verifyViewerToken }, async (request) => {
     const { assetId } = request.params as { assetId: string };

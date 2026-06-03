@@ -67,4 +67,20 @@ describe('ImmichClient', () => {
       'Immich asset lookup failed with status 404',
     );
   });
+
+  it('returns original download stream and content length', async () => {
+    const pool = mockAgent.get('http://immich.test');
+    pool.intercept({
+      path: '/api/assets/asset-1/original',
+      method: 'GET',
+      headers: { 'X-API-Key': 'secret' },
+    }).reply(200, 'video-bytes', {
+      headers: { 'content-length': '11' },
+    });
+
+    const client = new ImmichClient('http://immich.test', 'secret');
+    const download = await client.downloadOriginal('asset-1');
+
+    expect(download.sizeBytes).toBe(11);
+  });
 });

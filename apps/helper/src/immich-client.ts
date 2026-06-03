@@ -6,6 +6,11 @@ export type ImmichAsset = {
   originalFileName: string;
 };
 
+export type ImmichOriginalDownload = {
+  stream: NodeJS.ReadableStream;
+  sizeBytes?: number;
+};
+
 export class ImmichClient {
   constructor(
     private readonly baseUrl: string,
@@ -27,7 +32,7 @@ export class ImmichClient {
     return response.body.json() as Promise<ImmichAsset>;
   }
 
-  async downloadOriginal(assetId: string): Promise<NodeJS.ReadableStream> {
+  async downloadOriginal(assetId: string): Promise<ImmichOriginalDownload> {
     const encodedAssetId = encodeURIComponent(assetId);
     const response = await request(`${this.baseUrl}/api/assets/${encodedAssetId}/original`, {
       method: 'GET',
@@ -39,6 +44,12 @@ export class ImmichClient {
       throw new Error(`Immich original download failed with status ${response.statusCode}`);
     }
 
-    return response.body;
+    const contentLength = response.headers['content-length'];
+    const parsedSizeBytes = typeof contentLength === 'string' ? Number.parseInt(contentLength, 10) : Number.NaN;
+
+    return {
+      stream: response.body,
+      sizeBytes: Number.isFinite(parsedSizeBytes) && parsedSizeBytes > 0 ? parsedSizeBytes : undefined,
+    };
   }
 }
