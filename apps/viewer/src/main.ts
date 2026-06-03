@@ -11,6 +11,13 @@ type PrepareStatus = {
 
 const POLL_INTERVAL_MS = 1_000;
 
+type StatusElements = {
+  container: HTMLElement;
+  message: HTMLElement;
+  progress: HTMLElement;
+  percent: HTMLElement;
+};
+
 export function getAssetIdFromPath(pathname: string): string | null {
   const assetId = pathname.split('/').filter(Boolean).at(-1);
 
@@ -31,6 +38,14 @@ export function formatPrepareStatus(status: PrepareStatus): string {
   return message;
 }
 
+export function getProgressPercent(progress: number | null | undefined): number | null {
+  if (typeof progress !== 'number' || Number.isNaN(progress)) {
+    return null;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(progress * 100)));
+}
+
 function getViewerToken(): string | undefined {
   return new URLSearchParams(window.location.search).get('token')?.trim() || undefined;
 }
@@ -47,6 +62,43 @@ function getRequiredElement<T extends HTMLElement>(id: string, type: { new (): T
   }
 
   return element;
+}
+
+function getStatusElements(): StatusElements {
+  return {
+    container: getRequiredElement('status', HTMLDivElement),
+    message: getRequiredElement('status-message', HTMLDivElement),
+    progress: getRequiredElement('status-progress', HTMLDivElement),
+    percent: getRequiredElement('status-percent', HTMLDivElement),
+  };
+}
+
+function renderPrepareStatus(elements: StatusElements, status: PrepareStatus): void {
+  const state = status.state ?? status.status ?? 'preparing';
+  const message = status.message ?? 'Preparing viewer...';
+  const percent = getProgressPercent(status.progress);
+
+  elements.container.dataset.state = state;
+  elements.message.textContent = message;
+
+  if (percent === null) {
+    elements.container.dataset.progress = 'unknown';
+    elements.progress.style.width = '';
+    elements.percent.textContent = 'Working...';
+    return;
+  }
+
+  elements.container.dataset.progress = 'known';
+  elements.progress.style.width = `${percent}%`;
+  elements.percent.textContent = `${percent}%`;
+}
+
+function renderStatusError(elements: StatusElements, message: string): void {
+  elements.container.dataset.state = 'failed';
+  elements.container.dataset.progress = 'known';
+  elements.message.textContent = message;
+  elements.progress.style.width = '100%';
+  elements.percent.textContent = 'Failed';
 }
 
 function delay(ms: number): Promise<void> {
@@ -67,7 +119,7 @@ async function fetchJson<T>(url: string, viewerToken: string | undefined): Promi
 
 async function prepare(
   assetId: string,
-  statusElement: HTMLElement,
+  statusElements: StatusElements,
   viewerToken: string | undefined,
 ): Promise<void> {
   const prepareResponse = await fetch(`/api/assets/${encodeURIComponent(assetId)}/prepare`, {
@@ -86,7 +138,7 @@ async function prepare(
     );
     const state = status.state ?? status.status;
 
-    statusElement.textContent = formatPrepareStatus(status);
+    renderPrepareStatus(statusElements, status);
 
     if (state === 'ready') {
       return;
@@ -207,26 +259,29 @@ function renderSphere(video: HTMLVideoElement, canvas: HTMLCanvasElement): void 
 }
 
 async function startViewer(): Promise<void> {
-  const statusElement = getRequiredElement('status', HTMLDivElement);
+  const statusElements = getStatusElements();
   const video = getRequiredElement('video', HTMLVideoElement);
   const canvas = getRequiredElement('scene', HTMLCanvasElement);
   const assetId = getAssetIdFromPath(window.location.pathname);
   const viewerToken = getViewerToken();
 
   if (!assetId) {
-    statusElement.textContent = 'No asset ID provided.';
+    renderStatusError(statusElements, 'No asset ID provided.');
     throw new Error('No asset ID provided');
   }
 
   try {
-    await prepare(assetId, statusElement, viewerToken);
-    statusElement.style.display = 'none';
+    await prepare(assetId, statusElements, viewerToken);
+    statusElements.container.style.display = 'none';
     video.style.display = 'block';
     attachHls(assetId, video, viewerToken);
     renderSphere(video, canvas);
   } catch (error) {
-    statusElement.style.display = 'block';
-    statusElement.textContent = error instanceof Error ? error.message : 'Viewer failed to start.';
+    statusElements.container.style.display = 'flex';
+    renderStatusError(
+      statusElements,
+      error instanceof Error ? error.message : 'Viewer failed to start.',
+    );
   }
 }
 

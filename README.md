@@ -88,7 +88,7 @@ curl http://localhost:3560/health
 Expected:
 
 ```json
-{"status":"ok","version":"0.1.1"}
+{"status":"ok","version":"0.1.2"}
 ```
 
 ### 3. Install The Extension
