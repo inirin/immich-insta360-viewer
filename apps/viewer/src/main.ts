@@ -46,6 +46,10 @@ export function getProgressPercent(progress: number | null | undefined): number 
   return Math.max(0, Math.min(100, Math.round(progress * 100)));
 }
 
+export function isPlayableState(state: string | undefined): boolean {
+  return state === 'playable' || state === 'ready';
+}
+
 function getViewerToken(): string | undefined {
   return new URLSearchParams(window.location.search).get('token')?.trim() || undefined;
 }
@@ -140,7 +144,7 @@ async function prepare(
 
     renderPrepareStatus(statusElements, status);
 
-    if (state === 'ready') {
+    if (isPlayableState(state)) {
       return;
     }
 

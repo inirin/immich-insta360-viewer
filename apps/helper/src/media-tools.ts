@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const DEFAULT_MAX_STDOUT_BYTES = 1024 * 1024;
 const DEFAULT_MAX_STDERR_BYTES = 64 * 1024;
@@ -31,6 +32,11 @@ type RunOptions = {
   spawnImpl?: SpawnProcess;
   maxStdoutBytes?: number;
   maxStderrBytes?: number;
+};
+
+type WaitForPlayableHlsOptions = {
+  timeoutMs?: number | null;
+  pollIntervalMs?: number;
 };
 
 export function parseProbeJson(json: string): ProbeResult {
@@ -80,13 +86,57 @@ export async function generateHls(
     '-crf', '23',
     '-c:a', 'aac',
     '-f', 'hls',
-    '-hls_time', '4',
-    '-hls_playlist_type', 'vod',
+    '-hls_time', '2',
+    '-hls_playlist_type', 'event',
+    '-hls_flags', 'independent_segments',
     '-hls_segment_filename', join(outputDir, 'segment-%05d.ts'),
     playlist,
   ], options);
 
   return playlist;
+}
+
+export async function waitForPlayableHls(
+  outputDir: string,
+  options: WaitForPlayableHlsOptions = {},
+): Promise<string> {
+  const playlist = join(outputDir, 'master.m3u8');
+  const timeoutMs = options.timeoutMs ?? null;
+  const pollIntervalMs = options.pollIntervalMs ?? 500;
+  const deadline = timeoutMs === null ? Number.POSITIVE_INFINITY : Date.now() + timeoutMs;
+
+  while (Date.now() <= deadline) {
+    try {
+      const content = await readFile(playlist, 'utf8');
+
+      if (isPlayableHlsPlaylist(content)) {
+        return playlist;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+
+    await delay(pollIntervalMs);
+  }
+
+  throw new Error(`Timed out waiting for playable HLS at ${playlist}`);
+}
+
+export function isPlayableHlsPlaylist(content: string): boolean {
+  return content
+    .split(/\r?\n/)
+    .some((line) => {
+      const trimmed = line.trim();
+      return trimmed.length > 0 && !trimmed.startsWith('#') && trimmed.endsWith('.ts');
+    });
+}
+
+export function isCompleteHlsPlaylist(content: string): boolean {
+  return content
+    .split(/\r?\n/)
+    .some((line) => line.trim() === '#EXT-X-ENDLIST');
 }
 
 export function runProcessForTest(

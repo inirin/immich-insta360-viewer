@@ -3,6 +3,7 @@ export type AssetStatusName =
   | 'downloading'
   | 'analyzing'
   | 'processing'
+  | 'playable'
   | 'ready'
   | 'failed';
 

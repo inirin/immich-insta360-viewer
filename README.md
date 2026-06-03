@@ -10,6 +10,7 @@ This is for Insta360 360 video media, not every media file produced by Insta360 
 
 - Chrome/Edge context-menu integration for Immich assets.
 - Browser-hosted 360 viewer for dual-lens 360 `.insv` videos.
+- Progressive HLS playback starts after the first playable segments are available.
 - Immich API-only original download.
 - No Insta360 SDK required.
 - No Immich media-library volume mount required.
@@ -88,7 +89,7 @@ curl http://localhost:3560/health
 Expected:
 
 ```json
-{"status":"ok","version":"0.1.2"}
+{"status":"ok","version":"0.1.3"}
 ```
 
 ### 3. Install The Extension

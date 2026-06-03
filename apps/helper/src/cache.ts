@@ -1,5 +1,6 @@
-import { access, mkdir, stat } from 'node:fs/promises';
+import { access, mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { isCompleteHlsPlaylist } from './media-tools.js';
 
 export type CacheEntry = {
   assetDir: string;
@@ -43,6 +44,22 @@ export class AssetCache {
     } catch {
       return false;
     }
+  }
+
+  async hasCompletePlaylist(assetId: string): Promise<boolean> {
+    const entry = await this.entryFor(assetId);
+    try {
+      const content = await readFile(entry.playlistPath, 'utf8');
+      return isCompleteHlsPlaylist(content);
+    } catch {
+      return false;
+    }
+  }
+
+  async clearHls(assetId: string): Promise<void> {
+    const entry = await this.entryFor(assetId);
+    await rm(entry.hlsDir, { recursive: true, force: true });
+    await mkdir(entry.hlsDir, { recursive: true });
   }
 }
 

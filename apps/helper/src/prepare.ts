@@ -6,7 +6,7 @@ import { AssetStateStore } from './asset-state.js';
 import { AssetCache } from './cache.js';
 import type { ImmichAsset } from './immich-client.js';
 import { ImmichClient } from './immich-client.js';
-import { generateHls, probeFile } from './media-tools.js';
+import { generateHls, probeFile, waitForPlayableHls } from './media-tools.js';
 
 export function validateInsvAsset(asset: ImmichAsset): void {
   if (asset.type !== 'VIDEO' || !asset.originalFileName.toLowerCase().endsWith('.insv')) {
@@ -45,9 +45,20 @@ export async function prepareAsset(
     states.set(assetId, { state: 'analyzing', progress: 0.45, message: 'Analyzing .insv streams' });
     await probeFile(entry.originalPath);
 
-    if (!(await cache.hasPlaylist(assetId))) {
+    if (!(await cache.hasCompletePlaylist(assetId))) {
+      await cache.clearHls(assetId);
       states.set(assetId, { state: 'processing', progress: 0.65, message: 'Generating 360 stream' });
-      await generateHls(entry.originalPath, entry.hlsDir);
+      const generation = generateHls(entry.originalPath, entry.hlsDir);
+      await Promise.race([
+        waitForPlayableHls(entry.hlsDir),
+        generation,
+      ]);
+      states.set(assetId, {
+        state: 'playable',
+        progress: 0.82,
+        message: 'Starting playback while finishing conversion',
+      });
+      await generation;
     }
 
     states.set(assetId, { state: 'ready', progress: 1, message: 'Ready' });

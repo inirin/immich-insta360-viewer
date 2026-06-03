@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { formatPrepareStatus, getAssetIdFromPath, getProgressPercent } from './main';
+import { formatPrepareStatus, getAssetIdFromPath, getProgressPercent, isPlayableState } from './main';
 
 describe('getAssetIdFromPath', () => {
   test('returns the last path segment as the asset ID', () => {
@@ -31,5 +31,17 @@ describe('getProgressPercent', () => {
   test('returns null when progress is unknown', () => {
     expect(getProgressPercent(null)).toBeNull();
     expect(getProgressPercent(undefined)).toBeNull();
+  });
+});
+
+describe('isPlayableState', () => {
+  test('allows playback when HLS is playable or ready', () => {
+    expect(isPlayableState('playable')).toBe(true);
+    expect(isPlayableState('ready')).toBe(true);
+  });
+
+  test('keeps waiting for preparation states', () => {
+    expect(isPlayableState('processing')).toBe(false);
+    expect(isPlayableState(undefined)).toBe(false);
   });
 });
