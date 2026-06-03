@@ -1,0 +1,20 @@
+services:
+  insta360-viewer-helper:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.helper
+    environment:
+      IMMICH_URL: http://immich-server:2283
+      IMMICH_API_KEY: ${IMMICH_API_KEY}
+      CACHE_DIR: /cache
+      CACHE_MAX_GB: 20
+      CACHE_TTL_HOURS: 72
+      VIEWER_TOKEN: ${VIEWER_TOKEN}
+      PORT: 3560
+    volumes:
+      - insta360-viewer-cache:/cache
+    ports:
+      - "127.0.0.1:3560:3560"
+
+volumes:
+  insta360-viewer-cache:

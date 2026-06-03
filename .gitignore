@@ -1,0 +1,11 @@
+node_modules/
+apps/*/node_modules/
+apps/*/dist/
+apps/helper/viewer-dist/
+dist/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+immich-insta360-viewer-extension.zip

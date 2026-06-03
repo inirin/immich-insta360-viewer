@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>Immich Insta360 Viewer Options</title>
+    <style>
+      body {
+        min-width: 320px;
+        margin: 0;
+        padding: 16px;
+        color: #1f2933;
+        font: 14px/1.4 system-ui, sans-serif;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+      }
+
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #bac4d1;
+        border-radius: 4px;
+        font: inherit;
+      }
+
+      button {
+        margin-top: 12px;
+        padding: 8px 10px;
+        border: 0;
+        border-radius: 4px;
+        color: #ffffff;
+        background: #2563eb;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      #status {
+        min-height: 20px;
+        margin-top: 10px;
+        color: #52606d;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Immich Insta360 Viewer</h1>
+      <form id="options-form">
+        <label>
+          Helper URL
+          <input id="helper-url" name="helperUrl" type="url" required />
+        </label>
+        <label>
+          Viewer Token
+          <input id="viewer-token" name="viewerToken" type="password" autocomplete="off" />
+        </label>
+        <button type="submit">Save</button>
+      </form>
+      <div id="status" role="status"></div>
+    </main>
+    <script type="module" src="/src/options.ts"></script>
+  </body>
+</html>
