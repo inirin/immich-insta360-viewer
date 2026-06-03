@@ -16,10 +16,20 @@ This project provides a Docker helper service and a Chrome/Edge extension. The e
 ## Requirements
 
 - Docker or Docker Compose.
-- Immich server reachable from the helper container.
+- Immich v2.0.0 or newer, reachable from the helper container.
 - Immich API key.
 - Chrome or Edge for the extension.
 - Node.js 22 and pnpm 10.5.2 only if building the extension locally.
+
+## Compatibility
+
+- Supported Immich versions: v2.0.0 or newer.
+- Tested with Immich Server v2.7.5.
+- Required Immich API features:
+  - API key authentication.
+  - `GET /api/assets/{id}` for asset metadata.
+  - `GET /api/assets/{id}/original` for original file download.
+- Older Immich v1.x releases may work if they expose the same API behavior, but they are not part of the supported compatibility target.
 
 ## Quick Start
 
