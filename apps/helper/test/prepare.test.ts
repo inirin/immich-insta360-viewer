@@ -15,6 +15,6 @@ describe('validateInsvAsset', () => {
       id: 'a',
       type: 'VIDEO',
       originalFileName: 'clip.mp4',
-    })).toThrow('Only .insv video assets are supported');
+    })).toThrow('Only Insta360 360 .insv video assets are supported');
   });
 });

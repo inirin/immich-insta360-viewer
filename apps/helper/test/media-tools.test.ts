@@ -22,7 +22,7 @@ describe('parseProbeJson', () => {
   it('rejects files without two video streams', () => {
     expect(() => parseProbeJson(JSON.stringify({
       streams: [{ index: 0, codec_type: 'video', width: 3840, height: 3840 }],
-    }))).toThrow('Expected at least two video streams');
+    }))).toThrow('Expected at least two video streams for a 360 .insv file');
   });
 });
 

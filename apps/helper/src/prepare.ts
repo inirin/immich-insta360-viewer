@@ -10,7 +10,7 @@ import { generateHls, probeFile } from './media-tools.js';
 
 export function validateInsvAsset(asset: ImmichAsset): void {
   if (asset.type !== 'VIDEO' || !asset.originalFileName.toLowerCase().endsWith('.insv')) {
-    throw new Error('Only .insv video assets are supported');
+    throw new Error('Only Insta360 360 .insv video assets are supported');
   }
 }
 

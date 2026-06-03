@@ -41,7 +41,7 @@ export function parseProbeJson(json: string): ProbeResult {
   const audio = parsed.streams.find((stream) => stream.codec_type === 'audio');
 
   if (videos.length < 2) {
-    throw new Error('Expected at least two video streams in Insta360 .insv file');
+    throw new Error('Expected at least two video streams for a 360 .insv file');
   }
 
   return {

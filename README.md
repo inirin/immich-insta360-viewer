@@ -1,13 +1,15 @@
-# Immich Insta360 Viewer
+# Immich Insta360 360 Viewer
 
-Browser-based Insta360 `.insv` viewer for Immich.
+Browser-based Insta360 360 `.insv` viewer for Immich.
 
-This project provides a Docker helper service and a Chrome/Edge extension. The extension adds a context-menu action on Immich asset pages, and the helper downloads `.insv` originals through the Immich API, converts them to HLS with `ffmpeg`, and serves a WebGL 360 viewer.
+This project provides a Docker helper service and a Chrome/Edge extension. The extension adds a context-menu action on Immich asset pages, and the helper downloads 360 `.insv` originals through the Immich API, converts them to HLS with `ffmpeg`, and serves a WebGL 360 viewer.
+
+This is for Insta360 360 video media, not every media file produced by Insta360 cameras.
 
 ## Features
 
 - Chrome/Edge context-menu integration for Immich assets.
-- Browser-hosted 360 viewer for `.insv` videos.
+- Browser-hosted 360 viewer for dual-lens 360 `.insv` videos.
 - Immich API-only original download.
 - No Insta360 SDK required.
 - No Immich media-library volume mount required.
@@ -30,6 +32,12 @@ This project provides a Docker helper service and a Chrome/Edge extension. The e
   - `GET /api/assets/{id}` for asset metadata.
   - `GET /api/assets/{id}/original` for original file download.
 - Older Immich v1.x releases may work if they expose the same API behavior, but they are not part of the supported compatibility target.
+
+## Supported Media
+
+- Supported: Immich `VIDEO` assets with a `.insv` original file and at least two video streams, which is the expected layout for dual-lens Insta360 360 captures.
+- Not supported: non-360 Insta360 clips, single-lens action-camera clips, photos, `.insp` files, already-stitched MP4 files, or other camera formats.
+- The helper does not use the Insta360 SDK, so projection and stitching quality may differ from Insta360 Studio.
 
 ## Quick Start
 
@@ -80,7 +88,7 @@ curl http://localhost:3560/health
 Expected:
 
 ```json
-{"status":"ok","version":"0.1.0"}
+{"status":"ok","version":"0.1.1"}
 ```
 
 ### 3. Install The Extension
@@ -195,7 +203,7 @@ http://localhost:3560/view/<asset-id>?token=<viewer-token>
 
 ## Limitations
 
-- MVP supports `.insv` videos only.
+- MVP supports dual-lens 360 `.insv` videos only.
 - MVP uses `ffmpeg`, not the Insta360 SDK.
 - Projection quality may differ from Insta360 Studio.
 - Cache files are stored under `/cache` and can consume disk space.
