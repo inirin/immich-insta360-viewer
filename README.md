@@ -1,6 +1,6 @@
-# Immich Insta360 360 Viewer
+# Immich Insta360 Viewer
 
-Browser-based Insta360 360 `.insv` viewer for Immich.
+Browser-based 360 `.insv` viewer for Immich.
 
 This project provides a Docker helper service and a Chrome/Edge extension. The extension adds a context-menu action on Immich asset pages, and the helper downloads 360 `.insv` originals through the Immich API, converts them to HLS with `ffmpeg`, and serves a WebGL 360 viewer.
 
