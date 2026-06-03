@@ -11,6 +11,7 @@ This is for Insta360 360 video media, not every media file produced by Insta360 
 - Chrome/Edge context-menu integration for Immich assets.
 - Browser-hosted 360 viewer for dual-lens 360 `.insv` videos.
 - Progressive HLS playback starts after the first playable segments are available.
+- Byte-based download progress and ffmpeg duration-based conversion progress.
 - Immich API-only original download.
 - No Insta360 SDK required.
 - No Immich media-library volume mount required.
@@ -57,6 +58,7 @@ docker run -d `
   -e IMMICH_URL=http://host.docker.internal:2283 `
   -e IMMICH_API_KEY=$env:IMMICH_API_KEY `
   -e VIEWER_TOKEN=$env:VIEWER_TOKEN `
+  -e FFMPEG_PRESET=superfast `
   -v insta360-viewer-cache:/cache `
   ghcr.io/inirin/immich-insta360-viewer-helper:latest
 ```
@@ -74,6 +76,7 @@ docker run -d \
   -e IMMICH_URL=http://host.docker.internal:2283 \
   -e IMMICH_API_KEY="$IMMICH_API_KEY" \
   -e VIEWER_TOKEN="$VIEWER_TOKEN" \
+  -e FFMPEG_PRESET=superfast \
   -v insta360-viewer-cache:/cache \
   ghcr.io/inirin/immich-insta360-viewer-helper:latest
 ```
@@ -89,7 +92,7 @@ curl http://localhost:3560/health
 Expected:
 
 ```json
-{"status":"ok","version":"0.1.4"}
+{"status":"ok","version":"0.1.5"}
 ```
 
 ### 3. Install The Extension
@@ -148,6 +151,13 @@ http://localhost:3560/view/<immich-asset-id>?token=<viewer-token>
 ```
 
 The first run downloads and processes the original `.insv`, so it can take a while. Later opens reuse the helper cache.
+
+## Performance
+
+- The helper starts playback after the first playable HLS segments are available; conversion continues in the background.
+- Download progress is based on downloaded bytes when Immich sends `Content-Length`.
+- Conversion progress is based on ffmpeg processed timestamp divided by asset duration.
+- `FFMPEG_PRESET` defaults to `superfast`; use `veryfast` for smaller cache files or `ultrafast` for faster conversion with much larger cache files.
 
 ## Build From Source
 

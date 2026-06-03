@@ -7,6 +7,7 @@ const schema = z.object({
   CACHE_DIR: z.string().default('/cache'),
   CACHE_MAX_GB: z.coerce.number().positive().default(20),
   CACHE_TTL_HOURS: z.coerce.number().positive().default(72),
+  FFMPEG_PRESET: z.string().min(1).default('superfast'),
   PORT: z.coerce.number().int().positive().default(3560),
 });
 
@@ -17,6 +18,7 @@ export type HelperConfig = {
   cacheDir: string;
   cacheMaxGb: number;
   cacheTtlHours: number;
+  ffmpegPreset: string;
   port: number;
 };
 
@@ -36,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): HelperConfig {
     cacheDir: parsed.data.CACHE_DIR,
     cacheMaxGb: parsed.data.CACHE_MAX_GB,
     cacheTtlHours: parsed.data.CACHE_TTL_HOURS,
+    ffmpegPreset: parsed.data.FFMPEG_PRESET,
     port: parsed.data.PORT,
   };
 }

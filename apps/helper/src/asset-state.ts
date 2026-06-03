@@ -9,7 +9,7 @@ export type AssetStatusName =
 
 export type AssetStatus = {
   state: AssetStatusName;
-  progress: number;
+  progress: number | null;
   message: string;
   error?: string;
 };
@@ -20,7 +20,7 @@ export class AssetStateStore {
   get(assetId: string): AssetStatus {
     return this.states.get(assetId) ?? {
       state: 'unknown',
-      progress: 0,
+      progress: null,
       message: 'Asset has not been prepared',
     };
   }

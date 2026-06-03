@@ -9,6 +9,10 @@ import type { ImmichAsset } from './immich-client.js';
 import { ImmichClient } from './immich-client.js';
 import { generateHls, probeFile, waitForPlayableHls } from './media-tools.js';
 
+export type PrepareAssetOptions = {
+  ffmpegPreset?: string;
+};
+
 export function validateInsvAsset(asset: ImmichAsset): void {
   if (asset.type !== 'VIDEO' || !asset.originalFileName.toLowerCase().endsWith('.insv')) {
     throw new Error('Only Insta360 360 .insv video assets are supported');
@@ -17,7 +21,12 @@ export function validateInsvAsset(asset: ImmichAsset): void {
 
 export function mapDownloadProgress(downloadedBytes: number, totalBytes: number): number {
   const ratio = Math.max(0, Math.min(1, downloadedBytes / totalBytes));
-  return 0.1 + ratio * 0.3;
+  return 0.05 + ratio * 0.35;
+}
+
+export function mapProcessingProgress(processedRatio: number): number {
+  const ratio = Math.max(0, Math.min(1, processedRatio));
+  return 0.45 + ratio * 0.5;
 }
 
 function createProgressStream(
@@ -51,15 +60,16 @@ export async function prepareAsset(
   client: ImmichClient,
   cache: AssetCache,
   states: AssetStateStore,
+  options: PrepareAssetOptions = {},
 ): Promise<void> {
   try {
-    states.set(assetId, { state: 'downloading', progress: 0.1, message: 'Checking Immich asset' });
+    states.set(assetId, { state: 'downloading', progress: null, message: 'Checking Immich asset' });
     const asset = await client.getAsset(assetId);
     validateInsvAsset(asset);
 
     const entry = await cache.entryFor(assetId);
     if (!(await cache.hasOriginal(assetId))) {
-      states.set(assetId, { state: 'downloading', progress: 0.1, message: 'Downloading original .insv' });
+      states.set(assetId, { state: 'downloading', progress: null, message: 'Downloading original .insv' });
       const download = await client.downloadOriginal(assetId);
       const tempOriginalPath = join(
         entry.assetDir,
@@ -69,7 +79,7 @@ export async function prepareAsset(
         const progress = createProgressStream(download.sizeBytes, (downloadedBytes, totalBytes) => {
           states.set(assetId, {
             state: 'downloading',
-            progress: totalBytes === undefined ? 0.1 : mapDownloadProgress(downloadedBytes, totalBytes),
+            progress: totalBytes === undefined ? null : mapDownloadProgress(downloadedBytes, totalBytes),
             message: totalBytes === undefined
               ? `Downloading original .insv (${Math.round(downloadedBytes / 1024 / 1024)} MB)`
               : 'Downloading original .insv',
@@ -83,20 +93,30 @@ export async function prepareAsset(
       }
     }
 
-    states.set(assetId, { state: 'analyzing', progress: 0.45, message: 'Analyzing .insv streams' });
-    await probeFile(entry.originalPath);
+    states.set(assetId, { state: 'analyzing', progress: null, message: 'Analyzing .insv streams' });
+    const probe = await probeFile(entry.originalPath);
 
     if (!(await cache.hasCompletePlaylist(assetId))) {
       await cache.clearHls(assetId);
-      states.set(assetId, { state: 'processing', progress: 0.65, message: 'Generating 360 stream' });
-      const generation = generateHls(entry.originalPath, entry.hlsDir);
+      states.set(assetId, { state: 'processing', progress: null, message: 'Generating 360 stream' });
+      const generation = generateHls(entry.originalPath, entry.hlsDir, {
+        durationSeconds: probe.durationSeconds,
+        preset: options.ffmpegPreset,
+        onProgress(progress) {
+          states.set(assetId, {
+            state: 'processing',
+            progress: mapProcessingProgress(progress),
+            message: 'Generating 360 stream',
+          });
+        },
+      });
       await Promise.race([
         waitForPlayableHls(entry.hlsDir),
         generation,
       ]);
       states.set(assetId, {
         state: 'playable',
-        progress: 0.82,
+        progress: 1,
         message: 'Starting playback while finishing conversion',
       });
       await generation;

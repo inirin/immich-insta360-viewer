@@ -40,7 +40,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   function startPrepare(assetId: string): void {
     if (inFlight.has(assetId)) return;
 
-    const task = prepare(assetId, client, cache, states)
+    const task = prepare(assetId, client, cache, states, { ffmpegPreset: config.ffmpegPreset })
       .catch(() => undefined)
       .finally(() => {
         inFlight.delete(assetId);
@@ -48,7 +48,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     inFlight.set(assetId, task);
   }
 
-  app.get('/health', async () => ({ status: 'ok', version: '0.1.4' }));
+  app.get('/health', async () => ({ status: 'ok', version: '0.1.5' }));
 
   app.get('/api/assets/:assetId/status', { preHandler: verifyViewerToken }, async (request) => {
     const { assetId } = request.params as { assetId: string };

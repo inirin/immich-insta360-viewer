@@ -98,11 +98,13 @@
 
       #video {
         position: fixed;
-        right: 16px;
-        bottom: 16px;
+        left: -1px;
+        top: -1px;
         z-index: 1;
-        width: min(320px, calc(100vw - 32px));
-        max-height: 180px;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
         background: #000000;
       }
 
@@ -140,7 +142,7 @@
         <div id="status-percent">Starting...</div>
       </div>
     </div>
-    <video id="video" playsinline controls style="display:none"></video>
+    <video id="video" playsinline style="display:none"></video>
     <canvas id="scene"></canvas>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -8,6 +8,7 @@ import {
   isCompleteHlsPlaylist,
   isPlayableHlsPlaylist,
   parseProbeJson,
+  parseFfmpegProgressSeconds,
   probeFile,
   runProcessForTest,
   waitForPlayableHls,
@@ -22,16 +23,33 @@ describe('parseProbeJson', () => {
         { index: 1, codec_type: 'video', width: 3840, height: 3840 },
         { index: 2, codec_type: 'audio' },
       ],
+      format: { duration: '40.5' },
     }));
 
     expect(result.videoStreamIndexes).toEqual([0, 1]);
     expect(result.audioStreamIndex).toBe(2);
+    expect(result.durationSeconds).toBe(40.5);
   });
 
   it('rejects files without two video streams', () => {
     expect(() => parseProbeJson(JSON.stringify({
       streams: [{ index: 0, codec_type: 'video', width: 3840, height: 3840 }],
     }))).toThrow('Expected at least two video streams for a 360 .insv file');
+  });
+});
+
+describe('parseFfmpegProgressSeconds', () => {
+  it('parses ffmpeg timestamp progress', () => {
+    expect(parseFfmpegProgressSeconds('out_time=00:01:02.500000')).toBe(62.5);
+  });
+
+  it('parses ffmpeg microsecond progress fields', () => {
+    expect(parseFfmpegProgressSeconds('out_time_us=2500000')).toBe(2.5);
+    expect(parseFfmpegProgressSeconds('out_time_ms=2500000')).toBe(2.5);
+  });
+
+  it('ignores non-progress lines', () => {
+    expect(parseFfmpegProgressSeconds('progress=continue')).toBeNull();
   });
 });
 
@@ -98,6 +116,7 @@ describe('process-backed media tools', () => {
             { index: 0, codec_type: 'video' },
             { index: 1, codec_type: 'video' },
           ],
+          format: { duration: '12.5' },
         }));
         child.emit('close', 0);
       });
@@ -108,7 +127,7 @@ describe('process-backed media tools', () => {
 
     expect(calls).toEqual([{
       command: 'ffprobe',
-      args: ['-v', 'error', '-show_streams', '-of', 'json', 'clip.insv'],
+      args: ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', 'clip.insv'],
     }]);
   });
 
@@ -117,24 +136,36 @@ describe('process-backed media tools', () => {
     try {
       const child = createFakeChild();
       const calls: Array<{ command: string; args: string[] }> = [];
+      const reportedProgress: number[] = [];
       const spawnImpl: SpawnProcess = (command, args) => {
         calls.push({ command, args });
         queueMicrotask(() => {
+          child.stdout.emit('data', 'out_time=00:00:05.000000\nprogress=continue\n');
           child.emit('close', 0);
         });
         return child;
       };
 
-      const playlist = await generateHls('C:\\input clips\\clip.insv', dir, { spawnImpl });
+      const playlist = await generateHls('C:\\input clips\\clip.insv', dir, {
+        durationSeconds: 10,
+        onProgress(progress) {
+          reportedProgress.push(progress);
+        },
+        spawnImpl,
+      });
 
       expect(playlist).toBe(join(dir, 'master.m3u8'));
       expect(calls).toHaveLength(1);
       expect(calls[0].command).toBe('ffmpeg');
       expect(calls[0].args).toContain('[0:v:0][0:v:1]hstack=inputs=2,format=yuv420p[v]');
+      expect(calls[0].args).toContain('superfast');
       expect(calls[0].args).toContain('event');
       expect(calls[0].args).toContain('independent_segments');
+      expect(calls[0].args).toContain('pipe:1');
+      expect(calls[0].args).toContain('-nostats');
       expect(calls[0].args).toContain(join(dir, 'segment-%05d.ts'));
       expect(calls[0].args.at(-1)).toBe(join(dir, 'master.m3u8'));
+      expect(reportedProgress).toEqual([0.5]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
